@@ -1,0 +1,175 @@
+---
+title: "SCI 1402 — Tableau de bord (TN4)"
+author: "Josianne Gilbert"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    theme: flatly
+    self_contained: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, warning = FALSE, message = FALSE,
+  fig.retina = 2,
+  fig.width = 12,
+  fig.height = 4
+)
+
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(flexdashboard)
+library(scales)
+library(DT)
+
+# Données
+df <- readr::read_csv("donnees/StudentsPerformance.csv")
+
+# Renommer les colonnes
+names(df) <- c(
+  "gender",
+  "ethnicity",
+  "parent_education",
+  "lunch",
+  "test_prep",
+  "math",
+  "reading",
+  "writing"
+)
+
+# Nettoyage 
+df <- df %>%
+  mutate(
+    gender = factor(gender, levels = c("female", "male"),
+                    labels = c("Filles", "Garçons")),
+    lunch = factor(lunch, levels = c("free/reduced", "standard"),
+                   labels = c("Gratuit ou réduit", "Standard")),
+    test_prep = factor(test_prep, levels = c("none", "completed"),
+                       labels = c("Aucune préparation", "Préparation complétée")),
+    avg_score = (math + reading + writing) / 3,
+    success = ifelse(avg_score >= 60, 1, 0)
+  )
+```
+
+```{css, echo=FALSE}
+.chart-wrapper { height: 420px !important; }
+.section.level3 { padding-top: 6px; }
+.value-box { height: 135px; }
+.dataTables_wrapper .dataTables_filter input { width: 220px; }
+```
+
+Row {data-height=140}
+-----------------------------------------------------------------------
+
+### N élèves
+```{r}
+valueBox(nrow(df), icon = "fa-users")
+```
+
+### Score moyen global
+```{r}
+valueBox(round(mean(df$avg_score), 1), icon = "fa-line-chart")
+```
+
+### Taux de réussite (≥ 60 %)
+```{r}
+valueBox(paste0(round(mean(df$success) * 100, 1), " %"), icon = "fa-check-circle")
+```
+
+Row {data-height=560}
+-----------------------------------------------------------------------
+
+### Aperçu des données
+```{r}
+DT::datatable(
+  df %>% 
+    select(gender, lunch, test_prep, math, reading, writing, avg_score, success),
+  options = list(pageLength = 10, scrollX = TRUE)
+)
+```
+
+Row {data-height=520}
+-----------------------------------------------------------------------
+
+### Distribution du score moyen
+```{r, fig.height=4.6}
+ggplot(df, aes(x = avg_score)) +
+  geom_histogram(binwidth = 5) +
+  labs(x = "Score moyen", y = "Fréquence")
+```
+
+Row {data-height=520}
+-----------------------------------------------------------------------
+
+### Score moyen selon la préparation au test
+```{r, fig.height=4.6}
+ggplot(df, aes(x = test_prep, y = avg_score)) +
+  geom_boxplot() +
+  labs(
+    x = "Préparation au test",
+    y = "Score moyen"
+  )
+```
+
+Row {data-height=520}
+-----------------------------------------------------------------------
+
+### Taux de réussite selon la préparation au test et le type de repas du dîner
+```{r, fig.height=4.6}
+df %>%
+  group_by(test_prep, lunch) %>%
+  summarise(taux = mean(success), .groups = "drop") %>%
+  ggplot(aes(x = test_prep, y = taux, fill = lunch)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  labs(
+    x = "Préparation au test",
+    y = "Taux de réussite",
+    fill = "Type de repas du dîner"
+  )
+```
+
+Row {data-height=520}
+-----------------------------------------------------------------------
+
+### Modèle linéaire (score moyen)
+```{r}
+lm_model <- lm(avg_score ~ test_prep + gender + lunch, data = df)
+lm_tab <- as.data.frame(coef(summary(lm_model)))
+lm_tab$Variable <- rownames(lm_tab)
+lm_tab <- lm_tab %>% relocate(Variable)
+
+DT::datatable(
+  lm_tab,
+  options = list(pageLength = 8, scrollX = TRUE),
+  rownames = FALSE
+)
+```
+
+Row {data-height=520}
+-----------------------------------------------------------------------
+
+### Modèle logistique (réussite / échec)
+```{r}
+logit_model <- glm(success ~ test_prep + gender + lunch,
+                   data = df, family = binomial)
+
+logit_tab <- as.data.frame(coef(summary(logit_model)))
+logit_tab$Variable <- rownames(logit_tab)
+logit_tab <- logit_tab %>% relocate(Variable)
+
+DT::datatable(
+  logit_tab,
+  options = list(pageLength = 8, scrollX = TRUE),
+  rownames = FALSE
+)
+```
+
+Row {data-height=80}
+-----------------------------------------------------------------------
+
+### Notes
+- **Seuil de réussite : 60 %** (*score moyen* ≥ 60).  
+
