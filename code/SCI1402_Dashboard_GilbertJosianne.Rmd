@@ -6,7 +6,7 @@ output:
     orientation: rows
     vertical_layout: fill
     theme: flatly
-    self_contained: false
+    self_contained: true
 ---
 
 ```{r setup, include=FALSE}
@@ -172,4 +172,5 @@ Row {data-height=80}
 
 ### Notes
 - **Seuil de réussite : 60 %** (*score moyen* ≥ 60).  
+
 
