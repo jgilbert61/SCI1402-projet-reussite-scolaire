@@ -20,5 +20,9 @@ d’un jeu de données provenant de la plateforme Kaggle.
 - RStudio
 - R Markdown
 
+ ## Tableau de bord
+Le tableau de bord final est disponible dans le dossier `/Dashboard` sous forme de fichier HTML.
+
+
 ## Auteur
 Josianne Gilbert
