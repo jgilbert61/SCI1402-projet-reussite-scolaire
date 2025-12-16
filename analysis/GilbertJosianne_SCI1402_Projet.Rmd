@@ -34,7 +34,7 @@ library(ggplot2)
 ```
 
 ```{r import}
-df <- readr::read_csv("Donnees/StudentsPerformance.csv")
+df <- readr::read_csv("donnees/StudentsPerformance.csv")
 ```
 
 # Préparation et nettoyage des données
@@ -158,7 +158,6 @@ ttest_prep <- t.test(avg_score ~ test_prep, data = df)
 ttest_prep
 
 model <- lm(avg_score ~ test_prep + gender + lunch, data = df)
-summary(model)
 ```
 ```{r tdiag_rapide}
 # Diagnostic rapide du modèle linéaire
@@ -342,4 +341,5 @@ La matrice de confusion et le taux de bonne classification permettent d’évalu
 Le taux de bonne classification obtenu (`r round(mean(df$success == df$pred_success) * 100, 1)` %) correspond à la proportion d’élèves correctement classés (succès ou échec) par le modèle.
 
 Un taux élevé indique que le modèle arrive relativement bien à distinguer les élèves qui réussissent de ceux qui échouent, même s’il reste de la place pour l’amélioration.
+
 
