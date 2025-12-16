@@ -1,0 +1,345 @@
+---
+title: "SCI1402 - Projet de science des données"
+author: "Josianne Gilbert"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+# Contexte et objectifs du projet
+
+Ce projet porte sur la réussite scolaire d’élèves à partir d’un jeu de données librement accessible sur la plateforme Kaggle. 
+L’objectif principal est d’identifier certains facteurs associés à la performance scolaire, notamment la préparation au test, 
+le genre et le type de repas du midi (lunch).
+
+Plus précisément, je cherche à :
+- décrire la distribution des résultats scolaires;
+- comparer la performance entre différents groupes d’élèves;
+- construire un modèle permettant de mieux comprendre les facteurs liés à la réussite.
+
+
+# Importation des données
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE
+)
+library(readr)
+library(ggplot2)
+```
+
+```{r import}
+df <- readr::read_csv("Donnees/StudentsPerformance.csv")
+```
+
+# Préparation et nettoyage des données
+
+```{r nettoyage}
+names(df) <- c(
+  "gender",
+  "ethnicity",
+  "parent_education",
+  "lunch",
+  "test_prep",
+  "math",
+  "reading",
+  "writing"
+)
+
+df$gender           <- as.factor(df$gender)
+df$ethnicity        <- as.factor(df$ethnicity)
+df$parent_education <- as.factor(df$parent_education)
+df$lunch            <- as.factor(df$lunch)
+df$test_prep        <- as.factor(df$test_prep)
+
+df$avg_score <- (df$math + df$reading + df$writing) / 3
+df$success <- ifelse(df$avg_score >= 60, 1, 0)
+
+# Aperçu des nouvelles colonnes après nettoyage
+head(df)
+```
+
+# Analyse exploratoire
+
+Dans cette section, nous examinons la distribution des scores et les différences entre certains groupes.  
+L’échantillon contient `r nrow(df)` élèves au total.
+
+```{r resume_stats}
+summary(df[, c("math","reading","writing","avg_score")])
+```
+
+```{r group_means}
+# Moyenne des scores selon certains facteurs
+aggregate(avg_score ~ gender, df, mean)
+aggregate(avg_score ~ lunch, df, mean)
+aggregate(avg_score ~ test_prep, df, mean)
+```
+Dans l’ensemble, les scores en mathématiques, lecture et écriture couvrent une assez grande plage de valeurs. Les élèves n’obtiennent pas tous les mêmes résultats, ce qui montre une certaine variabilité dans la performance scolaire. En moyenne, les scores restent toutefois relativement élevés, ce qui suggère que plusieurs élèves réussissent assez bien.
+
+On remarque aussi que certains groupes semblent mieux s’en tirer que d’autres. Par exemple, selon le genre, le type de repas du midi ou la préparation au test, la moyenne des scores change légèrement. Cela laisse penser que ces facteurs pourraient être liés à la réussite scolaire.
+La moyenne générale de `avg_score` est d’environ `r round(mean(df$avg_score), 1)` points, ce qui donne une idée globale du niveau de performance des élèves.
+
+## Corrélation entre les scores
+
+```{r correlation}
+scores <- df[, c("math", "reading", "writing", "avg_score")]
+cor(scores)
+```
+Les corrélations entre les trois matières (math, lecture et écriture) sont positives et assez élevées. Autrement dit, les élèves qui obtiennent de bons résultats dans une matière ont souvent de bons résultats dans les autres aussi. La moyenne des scores est donc fortement liée à chacun des trois examens, ce qui est logique puisque c’est une combinaison de ces notes.
+
+# Visualisations des résultats
+
+## 1. Distribution des notes
+
+```{r histograms}
+ggplot(df, aes(math)) +
+  geom_histogram(binwidth = 5) +
+  labs(title = "Distribution des scores en math",
+       x = "Score",
+       y = "Fréquence")
+
+ggplot(df, aes(reading)) +
+  geom_histogram(binwidth = 5) +
+  labs(title = "Distribution des scores en lecture",
+       x = "Score",
+       y = "Fréquence")
+
+ggplot(df, aes(writing)) +
+  geom_histogram(binwidth = 5) +
+  labs(title = "Distribution des scores en écriture",
+       x = "Score",
+       y = "Fréquence")
+
+ggplot(df, aes(avg_score)) +
+  geom_histogram(binwidth = 5) +
+  labs(title = "Distribution de la moyenne des scores",
+       x = "Score",
+       y = "Fréquence")
+```
+
+## 2. Performance selon le genre
+
+```{r boxplot_gender}
+ggplot(df, aes(x = gender, y = avg_score)) +
+  geom_boxplot() +
+  labs(title = "Comparaison des scores moyens selon le genre",
+       x = "Genre",
+       y = "Score moyen")
+```
+Le diagramme en boîtes permet de comparer les scores moyens selon le genre. Les médianes et la dispersion des scores semblent relativement proches d’un groupe à l’autre. S’il existe des différences, elles ne paraissent pas énormes à première vue. Cela laisse penser que, dans cet échantillon, le genre n’est peut-être pas le facteur principal qui explique la réussite scolaire.
+
+## 3. Impact selon la préparation au test
+
+```{r boxplot_testprep}
+ggplot(df, aes(x = test_prep, y = avg_score)) +
+  geom_boxplot() +
+  labs(title = "Comparaison des scores moyens selon la préparation au test",
+       x = "Préparation au test",
+       y = "Score moyen")
+```
+On observe que les élèves qui ont complété la préparation au test ont en général un score moyen plus élevé que ceux qui n’ont pas suivi cette préparation. La médiane est plus haute et les scores semblent globalement meilleurs. Cela va dans le sens de l’idée que la préparation au test peut aider les élèves à mieux réussir aux examens.
+
+## Conclusion de l’analyse exploratoire
+
+Dans l’ensemble, les distributions de scores montrent une variabilité importante parmi les élèves. Plusieurs élèves obtiennent des scores élevés, tandis que d’autres présentent des résultats plus modestes. Les moyennes se situent généralement dans des valeurs intermédiaires, ce qui indique une population d’étudiants avec des niveaux de performance variés.
+
+Les analyses par groupe montrent quelques tendances intéressantes. D’abord, les corrélations élevées entre les trois matières suggèrent que les élèves qui performent bien dans une matière ont tendance à bien performer dans les autres. De plus, les résultats indiquent que la préparation au test semble être associée à un score moyen plus élevé. Cela laisse penser que cette variable pourrait jouer un rôle dans la réussite scolaire.
+
+Finalement, il n’y a pas de différence très marquée selon le genre, du moins en apparence. Les scores obtenus par les différents groupes sont relativement proches. Cela indique peut-être que le genre n’est pas un facteur déterminant dans la réussite pour cet échantillon.
+
+# Test statistique : Préparation au test
+```{r test_stat_prep}
+ttest_prep <- t.test(avg_score ~ test_prep, data = df)
+ttest_prep
+
+model <- lm(avg_score ~ test_prep + gender + lunch, data = df)
+summary(model)
+```
+```{r tdiag_rapide}
+# Diagnostic rapide du modèle linéaire
+par(mfrow = c(1, 2))
+plot(model, which = 1)  # Résidus vs valeurs ajustées
+plot(model, which = 2)  # QQ-plot des résidus
+par(mfrow = c(1, 1))
+
+```
+Le test *t* compare les moyennes des deux groupes (avec et sans préparation au test).  
+La différence de moyenne observée est d’environ `r round(diff(rev(ttest_prep$estimate)), 1)` points en faveur des élèves ayant complété la préparation au test.  
+La p-value associée au test est de `r signif(ttest_prep$p.value, 3)`, ce qui indique que cette différence est statistiquement significative (p < 0.05).  
+On peut donc conclure que la préparation au test semble avoir un impact réel sur la performance moyenne des élèves.
+
+Les graphiques de diagnostic ne révèlent pas de problème majeur avec le modèle linéaire; les résidus restent globalement bien répartis.
+
+
+# Modèle linéaire
+```{r modele_lineaire}
+summary(model)
+```
+Le modèle linéaire permet d’évaluer l’effet de plusieurs variables sur le score moyen.  
+Il inclut ici trois variables explicatives : la préparation au test, le genre et le type de repas.
+
+Le coefficient de détermination du modèle est de `r round(summary(model)$r.squared, 3)`.  
+Cela signifie qu’environ `r round(summary(model)$r.squared * 100, 1)` % de la variabilité des scores moyens est expliquée par ces variables.
+
+Les p-values des coefficients montrent que les trois variables sont statistiquement significatives (p < 0.001), ce qui suggère qu’elles sont toutes associées à des variations du score moyen, toutes choses étant égales par ailleurs.
+
+## Conclusion sur les modèles
+
+De façon générale, les étudiants obtiennent des scores assez élevés dans les trois matières. 
+La distribution des notes est relativement similaire entre les sujets, et les corrélations sont fortes.
+
+La préparation au test semble être le facteur qui influence le plus la moyenne générale. 
+Les étudiants ayant complété la préparation au test ont des scores supérieurs.
+
+Le genre n’apparaît pas comme un facteur déterminant dans cet échantillon. 
+De même, certaines variables comme le type de lunch ou le niveau d’éducation des parents 
+semblent avoir un effet plus faible.
+
+Ces résultats nous donnent une première idée des variables importantes pour expliquer la réussite scolaire.
+
+# Tableau de bord : visualisation de la réussite
+```{r tableau_bord_Visualisation_reussite}
+# Graphique : taux de réussite selon la préparation au test et le type de lunch
+success_rates <- aggregate(
+  success ~ test_prep + lunch,
+  data = df,
+  mean
+)
+
+ggplot(success_rates, aes(x = test_prep, y = success, fill = lunch)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Taux de réussite selon la préparation au test et le type de lunch",
+    x = "Préparation au test",
+    y = "Taux de réussite"
+  )
+
+```
+Ce graphique montre que les élèves ayant complété la préparation au test et ayant un lunch standard présentent les taux de réussite les plus élevés.
+Pour définir la réussite, j’ai utilisé un seuil de 60 %, qui correspond à un niveau de passage souvent utilisé dans le contexte scolaire.
+
+# Conclusion générale
+Dans ce projet, nous avons analysé les résultats scolaires d’un échantillon d’élèves à partir de
+plusieurs variables sociodémographiques et académiques. L’exploration des données a révélé une
+distribution relativement variée des scores, avec des corrélations positives entre les trois matières
+(Math, Lecture et Écriture).
+
+Les analyses visuelles et les tests statistiques ont montré que la préparation au test semble être
+l’un des facteurs les plus associés à des scores plus élevés. À l’inverse, le genre ne semble pas
+avoir un effet majeur sur les performances scolaires dans cet échantillon.
+
+Ces résultats suggèrent que des interventions pédagogiques ciblées, comme la préparation au test,
+pourraient contribuer à améliorer la réussite scolaire. Il serait pertinent d’approfondir cette
+analyse avec un modèle plus complet ou avec un plus grand échantillon.
+
+## Limites et pistes futures
+
+L’échantillon utilisé ne représente peut-être pas l’ensemble des étudiants. Certaines variables
+importantes comme la motivation, le temps consacré aux devoirs ou l’encadrement familial ne sont
+pas présentes dans le jeu de données. Une analyse future pourrait inclure des données
+supplémentaires ou un modèle prédictif plus avancé.
+
+# Modélisation : régression logistique
+```{r regression_logistique}
+# Modèle de régression logistique
+logit_model <- glm(success ~ test_prep + gender + lunch,
+                   data = df,
+                   family = binomial)
+
+summary(logit_model)
+
+# Probabilités prédites
+df$pred_prob <- predict(logit_model, type = "response")
+
+# Prédiction binaire (seuil 0.5)
+df$pred_success <- ifelse(df$pred_prob >= 0.5, 1, 0)
+
+# Matrice de confusion
+table(Observed = df$success, Predicted = df$pred_success)
+
+# Taux de bonne classification
+mean(df$success == df$pred_success)
+
+```
+```{r resume_taux_reussite}
+# Résumé des taux de réussite par groupe
+success_rates <- aggregate(
+  success ~ test_prep + gender + lunch,
+  data = df,
+  mean
+)
+
+success_rates$success_pct <- round(success_rates$success * 100, 1)
+
+success_rates
+
+
+```
+Le modèle prédit correctement environ `r round(mean(df$success == df$pred_success) * 100, 1)` % des cas, ce qui montre
+une capacité raisonnable à distinguer les élèves en réussite des élèves en échec, bien que d’autres variables pourraient
+améliorer cette performance.
+
+
+Dans ce modèle de régression logistique, la variable à prédire est `success` (1 = succès, 0 = échec). 
+Les prédicteurs sont la préparation au test (`test_prep`), le genre (`gender`) et le type de repas (`lunch`). 
+Le modèle permet donc d’estimer la probabilité qu’un élève réussisse en fonction de ces trois variables.
+
+
+## Interprétation des coefficients
+
+Le modèle logistique nous permet d’évaluer les effets des variables *test_prep*, *gender* et *lunch* sur la probabilité de réussir à l’examen. 
+Comme tous les coefficients sont significatifs (p-value < 0.001), nous pouvons conclure que ces trois variables contribuent de manière importante à la prédiction du succès.
+
+- **test_prep**  
+  Le coefficient associé à la catégorie *none* (−1.0941) est négatif et significatif. 
+  Cela signifie que les étudiants qui n’ont pas effectué la préparation au test ont une probabilité de réussite plus faible que ceux qui l’ont faite.
+
+- **gender**  
+  Le coefficient pour *male* (−0.5540) est également négatif. 
+  À caractéristiques semblables, les étudiants masculins ont donc une probabilité de réussite plus faible que les étudiantes.
+
+- **lunch**  
+  Le coefficient associé au lunch *standard* (1.2250) est positif et significatif. 
+  Les élèves bénéficiant d’un lunch standard ont donc une probabilité de réussite plus élevée que ceux ayant un lunch gratuit ou réduit.
+
+En résumé, le modèle révèle que :
+- ne pas avoir fait le test prep diminue les chances de réussite ;
+- être un garçon diminue également les chances ;
+- avoir un lunch standard augmente les chances de réussite.
+
+## Odds ratios
+
+Pour rendre l’interprétation plus intuitive, on peut convertir les coefficients en *odds ratios* en appliquant l’exponentielle :
+
+```{r odds_ratios}
+exp(coef(logit_model))
+```
+
+Les étudiants n’ayant pas fait la préparation au test ont environ 0.33 fois les chances de réussir par rapport à ceux qui l’ont faite.
+
+Les garçons ont environ 0.57 fois les chances de réussir par rapport aux filles.
+
+Les élèves ayant un lunch standard ont environ 3.40 fois plus de chances de réussir que ceux ayant un lunch gratuit ou réduit.
+
+Ces valeurs confirment que la préparation au test et un lunch standard augmentent les chances de réussite, tandis qu’être un garçon est associé à une probabilité de succès plus faible dans cet échantillon.
+
+Qualité du modèle
+
+La déviance nulle vaut 1195.2 alors que la déviance résiduelle du modèle est de 1076.5.
+Cette diminution indique que le modèle avec les trois variables explicatives s’ajuste mieux aux données qu’un modèle sans prédicteurs.
+L’AIC du modèle est de 1084.5, ce qui pourra servir à comparer ce modèle avec d’autres modèles éventuels.
+
+Performance de la classification
+
+À partir des probabilités prédites, nous avons construit une prédiction binaire (succès/échec) avec un seuil de 0.5.
+La matrice de confusion et le taux de bonne classification permettent d’évaluer la performance du modèle en termes de prédiction.
+
+Le taux de bonne classification obtenu (`r round(mean(df$success == df$pred_success) * 100, 1)` %) correspond à la proportion d’élèves correctement classés (succès ou échec) par le modèle.
+
+Un taux élevé indique que le modèle arrive relativement bien à distinguer les élèves qui réussissent de ceux qui échouent, même s’il reste de la place pour l’amélioration.
+
